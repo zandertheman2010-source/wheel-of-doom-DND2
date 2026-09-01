@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>DND Wheel of Doom</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Manrope:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0c0912;
+  --bg-panel: #16111f;
+  --bg-panel-2: #1e1730;
+  --rule: #35293f;
+  --text: #f1ecff;
+  --text-dim: #a99fc0;
+  --accent-doom: #ff3b5c;
+  --accent-gold: #ffb454;
+  --radius: 14px;
+  --font-display: "Cinzel", serif;
+  --font-body: "Manrope", sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: radial-gradient(circle at 50% -10%, #241534 0%, var(--bg) 55%);
+  color: var(--text);
+  font-family: var(--font-body);
+  min-height: 100vh;
+}
+.doom-frame { max-width: 760px; margin: 0 auto; padding: 40px 20px 64px; }
+.view { display: none; }
+.view.active { display: block; animation: fadeIn 0.35s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+.eyebrow-free { color: var(--text-dim); font-size: 0.95rem; margin: 0 0 6px; }
+.doom-title { font-family: var(--font-display); font-weight: 900; font-size: 2.6rem; line-height: 1.05; margin: 0 0 16px; }
+.doom-title.small { font-size: 2rem; margin-bottom: 10px; }
+.start-copy { color: var(--text-dim); font-size: 1.02rem; line-height: 1.6; max-width: 56ch; margin-bottom: 28px; }
+
+.start-glyph { position: relative; width: 100px; height: 100px; margin-bottom: 24px; }
+.glyph-ring { position: absolute; inset: 0; border: 2px solid var(--accent-doom); border-radius: 50%; opacity: 0.55; }
+.glyph-ring.ring-2 { inset: 16px; border-color: var(--accent-gold); opacity: 0.7; }
+.glyph-core { position: absolute; inset: 36px; background: conic-gradient(var(--accent-doom), var(--accent-gold), var(--accent-doom)); border-radius: 50%; filter: blur(1px); }
+
+.start-form { display: flex; flex-direction: column; gap: 10px; max-width: 420px; margin-bottom: 32px; }
+.start-form label { color: var(--text-dim); font-size: 0.9rem; }
+.start-form input { background: var(--bg-panel); border: 1px solid var(--rule); border-radius: 10px; padding: 13px 15px; color: var(--text); font-family: var(--font-body); font-size: 1rem; width: 100%; }
+.start-form input:focus { outline: 2px solid var(--accent-gold); }
+
+.start-stats-row { display: flex; gap: 24px; flex-wrap: wrap; }
+.start-stats-row div { display: flex; flex-direction: column; }
+.start-stats-row strong { font-family: var(--font-display); font-size: 1.5rem; color: var(--accent-gold); }
+.start-stats-row span { color: var(--text-dim); font-size: 0.82rem; }
+
+.btn { display: inline-block; border: none; border-radius: 10px; padding: 13px 20px; font-family: var(--font-body); font-weight: 700; font-size: 0.98rem; cursor: pointer; text-decoration: none; text-align: center; -webkit-tap-highlight-color: transparent; }
+.btn-primary { background: var(--accent-doom); color: #fff; }
+.btn-primary:active { background: #ff5473; }
+.btn-gold { background: var(--accent-gold); color: #1b1204; }
+.btn-gold:active { background: #ffc574; }
+.btn-ghost { background: transparent; color: var(--text-dim); border: 1px solid var(--rule); }
+.btn-big { padding: 15px 26px; font-size: 1.02rem; width: 100%; max-width: 340px; }
+.btn[disabled] { opacity: 0.4; cursor: not-allowed; }
+.hidden { display: none !important; }
+.center { text-align: center; margin: 0 auto; }
+
+.step-track { display: flex; gap: 8px; margin-bottom: 14px; }
+.step-dot { width: 24px; height: 6px; border-radius: 4px; background: var(--rule); }
+.step-dot.active { background: var(--accent-gold); }
+.step-dot.done { background: var(--accent-doom); }
+
+.wheel-sub { color: var(--text-dim); margin-bottom: 26px; max-width: 56ch; }
+.wheel-stage { position: relative; width: 260px; height: 260px; margin: 0 auto 20px; }
+.wheel-pointer { position: absolute; top: -16px; left: 50%; transform: translateX(-50%); color: var(--accent-gold); font-size: 1.5rem; z-index: 3; }
+.wheel { width: 100%; height: 100%; border-radius: 50%; border: 6px solid var(--bg-panel-2); box-shadow: 0 0 0 3px var(--rule), 0 20px 60px rgba(255,59,92,0.15); position: relative; transition: transform 3.2s cubic-bezier(0.15,0.85,0.2,1); }
+.wheel-hub { position: absolute; inset: 38%; background: var(--bg-panel); border: 2px solid var(--accent-gold); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: 0.75rem; text-align: center; }
+.tier-legend { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 26px; }
+.tier-chip { font-size: 0.75rem; color: var(--text-dim); border: 1px solid var(--chip-color); border-radius: 20px; padding: 4px 10px; }
+.tier-chip::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--chip-color); margin-right: 6px; }
+
+.result-card { margin: 26px auto 0; max-width: 460px; background: var(--bg-panel); border: 1px solid var(--rule); border-left: 5px solid var(--accent-gold); border-radius: var(--radius); padding: 18px 20px; }
+.result-tier-badge { display: inline-block; font-size: 0.72rem; border-radius: 20px; padding: 3px 10px; margin-bottom: 10px; border: 1px solid; }
+.result-card h2 { font-family: var(--font-display); margin: 0 0 8px; font-size: 1.3rem; }
+.result-card p { color: var(--text-dim); margin: 0 0 12px; font-size: 0.92rem; }
+.bonus-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.bonus-chip { font-size: 0.78rem; background: var(--bg-panel-2); border-radius: 8px; padding: 4px 8px; }
+.result-power { font-size: 0.88rem; color: var(--text-dim); }
+.result-power span { color: var(--text); font-weight: 700; }
+
+.stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-width: 420px; margin: 22px 0 0; }
+.stat-box { background: var(--bg-panel); border: 1px solid var(--rule); border-radius: 12px; padding: 12px; text-align: center; position: relative; }
+.stat-label { display: block; color: var(--text-dim); font-size: 0.76rem; letter-spacing: 0.05em; }
+.stat-val { display: block; font-family: var(--font-display); font-size: 1.5rem; margin-top: 4px; }
+.stat-bonus { position: absolute; top: 6px; right: 8px; color: var(--accent-gold); font-size: 0.7rem; font-weight: 700; }
+
+.hero-card { background: var(--bg-panel); border: 1px solid var(--rule); border-top: 5px solid var(--tier-color, var(--accent-gold)); border-radius: 18px; padding: 20px; margin-top: 18px; }
+.hero-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px; }
+.power-tier-badge { font-family: var(--font-display); color: var(--accent-gold); font-size: 0.92rem; }
+.hp-badge { background: var(--bg-panel-2); border-radius: 20px; padding: 5px 12px; font-size: 0.82rem; color: var(--accent-doom); font-weight: 700; }
+.trait-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px; }
+.trait { background: var(--bg-panel-2); border-left: 4px solid var(--trait-color, var(--accent-gold)); border-radius: 10px; padding: 11px 13px; }
+.trait-kind { display: block; color: var(--text-dim); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; }
+.trait-name { display: block; font-family: var(--font-display); font-size: 0.98rem; margin: 3px 0 2px; }
+.trait-tier { color: var(--accent-gold); font-size: 0.72rem; }
+.trait-desc { color: var(--text-dim); font-size: 0.78rem; margin: 6px 0 0; line-height: 1.4; }
+.stat-grid.final { grid-template-columns: repeat(3, 1fr); max-width: none; }
+.sheet-actions { margin-top: 22px; text-align: center; display: flex; flex-direction: column; gap: 10px; align-items: center; }
+
+.you-strip { background: var(--bg-panel); border: 1px solid var(--rule); border-radius: 10px; padding: 12px 16px; color: var(--text-dim); margin-bottom: 22px; font-size: 0.88rem; }
+.you-strip a, .link-btn { color: var(--accent-gold); background: none; border: none; cursor: pointer; font: inherit; padding: 0; text-decoration: underline; }
+.opponent-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+.opponent-card { background: var(--bg-panel); border: 1px solid var(--rule); border-top: 4px solid var(--tier-color, var(--accent-gold)); border-radius: 12px; padding: 14px; }
+.opponent-card h3 { font-family: var(--font-display); margin: 0 0 6px; font-size: 1rem; }
+.opp-line { margin: 2px 0; font-size: 0.82rem; }
+.opp-line.dim { color: var(--text-dim); }
+.opponent-card .btn { margin-top: 10px; width: 100%; }
+
+.duel-row { display: flex; align-items: center; gap: 12px; margin: 20px 0; }
+.duel-card { flex: 1; background: var(--bg-panel); border: 1px solid var(--rule); border-top: 4px solid var(--tier-color, var(--accent-gold)); border-radius: 12px; padding: 14px; min-width: 0; }
+.duel-card h3 { font-family: var(--font-display); margin: 0 0 4px; font-size: 1rem; overflow-wrap: break-word; }
+.duel-vs { font-family: var(--font-display); color: var(--accent-doom); font-size: 1.3rem; }
+.hp-bar-wrap { background: var(--bg-panel-2); border-radius: 20px; height: 9px; margin-top: 10px; overflow: hidden; }
+.hp-bar { height: 100%; background: var(--accent-doom); transition: width 0.5s ease; }
+.hp-num { display: block; margin-top: 6px; font-size: 0.75rem; color: var(--text-dim); }
+
+.battle-log { background: var(--bg-panel); border: 1px solid var(--rule); border-radius: 12px; padding: 14px 16px; max-height: 300px; overflow-y: auto; font-size: 0.85rem; line-height: 1.6; margin-bottom: 18px; }
+.battle-log p { margin: 0 0 4px; color: var(--text-dim); }
+.battle-log p.winner { color: var(--accent-gold); font-weight: 700; }
+
+.loading-note { color: var(--text-dim); font-size: 0.85rem; margin-top: 10px; }
+
+@media (max-width: 480px) {
+  .doom-title { font-size: 2rem; }
+  .trait-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="doom-frame">
+
+  <!-- START -->
+  <section id="view-start" class="view active">
+    <div class="start-glyph" aria-hidden="true">
+      <div class="glyph-ring"></div>
+      <div class="glyph-ring ring-2"></div>
+      <div class="glyph-core"></div>
+    </div>
+    <p class="eyebrow-free">A game of chance and consequence</p>
+    <h1 class="doom-title">DND Wheel<br>of Doom</h1>
+    <p class="start-copy">
+      Four wheels decide who you become: your race, your power, your passive, and your
+      ability. Some spins are kind. Most are not. Roll your stats, meet the character the
+      wheel gave you, then send them into the arena against every other doomed soul who
+      has spun before you &mdash; on any phone, tablet, or Chromebook.
+    </p>
+    <form id="startForm" class="start-form">
+      <label for="hero_name">Name your doomed hero</label>
+      <input id="hero_name" type="text" maxlength="24" placeholder="e.g. Kessia Ninefingers" autocomplete="off" required>
+      <button type="submit" class="btn btn-primary btn-big">Step to the Wheel</button>
+    </form>
+    <div class="start-stats-row">
+      <div><strong>100</strong><span>Races</span></div>
+      <div><strong>100</strong><span>Powers</span></div>
+      <div><strong>100</strong><span>Passives</span></div>
+      <div><strong>100</strong><span>Abilities</span></div>
+    </div>
+  </section>
+
+  <!-- WHEEL (shared markup, relabeled per category by JS) -->
+  <section id="view-wheel" class="view">
+    <div class="step-track" id="wheelSteps"></div>
+    <p class="eyebrow-free" id="wheelHero"></p>
+    <h1 class="doom-title small" id="wheelTitle"></h1>
+    <p class="wheel-sub" id="wheelSub"></p>
+    <div class="wheel-stage">
+      <div class="wheel-pointer" aria-hidden="true">&#9660;</div>
+      <div id="wheel" class="wheel"><div class="wheel-hub" id="wheelHub"></div></div>
+    </div>
+    <div class="tier-legend" id="tierLegend"></div>
+    <div class="center"><button id="spinBtn" class="btn btn-primary btn-big">Spin</button></div>
+    <div id="resultCard" class="result-card hidden">
+      <div class="result-tier-badge" id="resultTierBadge"></div>
+      <h2 id="resultName"></h2>
+      <p id="resultDesc"></p>
+      <div id="resultBonuses" class="bonus-row"></div>
+      <div class="result-power">Power Score: <span id="resultScore"></span></div>
+    </div>
+    <div class="center" style="margin-top:20px;">
+      <button id="continueBtn" class="btn btn-gold btn-big hidden">Continue &rarr;</button>
+    </div>
+  </section>
+
+  <!-- STATS -->
+  <section id="view-stats" class="view">
+    <div class="step-track" id="statsSteps"></div>
+    <p class="eyebrow-free" id="statsHero"></p>
+    <h1 class="doom-title small">Roll Your Stats</h1>
+    <p class="wheel-sub">Six core stats, rolled 3&ndash;18. They'll combine with everything the wheels gave you.</p>
+    <div class="center"><button id="rollBtn" class="btn btn-primary btn-big">Roll Stats</button></div>
+    <div id="statGrid" class="stat-grid hidden">
+      <div class="stat-box" data-stat="STR"><span class="stat-label">STR</span><span class="stat-val">0</span></div>
+      <div class="stat-box" data-stat="AGI"><span class="stat-label">AGI</span><span class="stat-val">0</span></div>
+      <div class="stat-box" data-stat="INT"><span class="stat-label">INT</span><span class="stat-val">0</span></div>
+      <div class="stat-box" data-stat="DEF"><span class="stat-label">DEF</span><span class="stat-val">0</span></div>
+      <div class="stat-box" data-stat="VIT"><span class="stat-label">VIT</span><span class="stat-val">0</span></div>
+      <div class="stat-box" data-stat="LCK"><span class="stat-label">LCK</span><span class="stat-val">0</span></div>
+    </div>
+    <div class="center" style="margin-top:22px;">
+      <button id="sheetBtn" class="btn btn-gold btn-big hidden">Reveal Your Character &rarr;</button>
+    </div>
+  </section>
+
+  <!-- SHEET -->
+  <section id="view-sheet" class="view">
+    <p class="eyebrow-free">The wheels have spoken</p>
+    <h1 class="doom-title small" id="sheetName"></h1>
+    <div class="hero-card" id="heroCard">
+      <div class="hero-card-top">
+        <span class="power-tier-badge" id="sheetTier"></span>
+        <span class="hp-badge" id="sheetHp"></span>
+      </div>
+      <div class="trait-grid" id="sheetTraits"></div>
+      <div class="stat-grid final" id="sheetStats"></div>
+    </div>
+    <div class="sheet-actions">
+      <button id="saveBtn" class="btn btn-gold btn-big">Save &amp; Enter the Arena &rarr;</button>
+      <div id="saveNote" class="loading-note hidden"></div>
+    </div>
+  </section>
+
+  <!-- ROSTER -->
+  <section id="view-roster" class="view">
+    <p class="eyebrow-free">The Arena</p>
+    <h1 class="doom-title small">Choose an Opponent</h1>
+    <div class="you-strip" id="youStrip"></div>
+    <div id="rosterLoading" class="loading-note">Loading the arena roster...</div>
+    <div id="opponentGrid" class="opponent-grid hidden"></div>
+    <p id="rosterEmpty" class="wheel-sub hidden">No other doomed souls have saved a character
+      yet. Share this page with someone else &mdash; when they spin up a hero and save it, it'll
+      show up here for you to fight.</p>
+  </section>
+
+  <!-- BATTLE -->
+  <section id="view-battle" class="view">
+    <p class="eyebrow-free">The Arena</p>
+    <h1 class="doom-title small" id="battleTitle"></h1>
+    <div class="duel-row">
+      <div class="duel-card" id="duelCardA">
+        <h3 id="duelNameA"></h3>
+        <p class="opp-line" id="duelRaceA"></p>
+        <p class="opp-line dim" id="duelTierA"></p>
+        <div class="hp-bar-wrap"><div class="hp-bar" id="hpA" style="width:100%"></div></div>
+        <span class="hp-num" id="hpNumA"></span>
+      </div>
+      <div class="duel-vs">VS</div>
+      <div class="duel-card" id="duelCardB">
+        <h3 id="duelNameB"></h3>
+        <p class="opp-line" id="duelRaceB"></p>
+        <p class="opp-line dim" id="duelTierB"></p>
+        <div class="hp-bar-wrap"><div class="hp-bar" id="hpB" style="width:100%"></div></div>
+        <span class="hp-num" id="hpNumB"></span>
+      </div>
+    </div>
+    <div class="center"><button id="fightBtn" class="btn btn-primary btn-big">Begin Battle</button></div>
+    <div id="battleLog" class="battle-log" style="margin-top:18px;"></div>
+    <div id="battleActions" class="sheet-actions hidden">
+      <button id="backToArenaBtn" class="btn btn-gold btn-big">Back to the Arena</button>
+    </div>
+  </section>
+
+</div>
+
+<script>
+(function () {
+"use strict";
+
+/* =========================================================================
+   DATA: 100+ Races / Powers / Passives / Abilities + the Power Gap system
+   ========================================================================= */
+const STAT_KEYS = ["STR", "AGI", "INT", "DEF", "VIT", "LCK"];
+const TIERS = [
+  { name: "Common",    weight: 40, min: 1,  max: 3,  color: "#9aa0a6" },
+  { name: "Uncommon",  weight: 27, min: 4,  max: 6,  color: "#3fb950" },
+  { name: "Rare",      weight: 17, min: 7,  max: 9,  color: "#4d9dff" },
+  { name: "Epic",      weight: 10, min: 10, max: 13, color: "#b06bff" },
+  { name: "Legendary", weight: 5,  min: 14, max: 17, color: "#ff9f2e" },
+  { name: "Mythic",    weight: 1,  min: 18, max: 22, color: "#ff3b5c" },
+];
+const TIER_WEIGHT_TOTAL = TIERS.reduce((s, t) => s + t.weight, 0);
+
+function randInt(lo, hi) { return lo + Math.floor(Math.random() * (hi - lo + 1)); }
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function weightedTier() {
+  let r = Math.random() * TIER_WEIGHT_TOTAL;
+  for (const t of TIERS) { if (r < t.weight) return t; r -= t.weight; }
+  return TIERS[0];
+}
+function buildPool(roots, mods, fmt, count) {
+  count = count || 100;
+  const set = new Set();
+  mods.forEach(m => roots.forEach(r => set.add(fmt(m, r))));
+  roots.forEach(r => set.add(r));
+  return shuffle(Array.from(set)).slice(0, count);
+}
+function makeEntries(names, descFn, statPool) {
+  const entries = names.map(name => {
+    const tier = weightedTier();
+    const power_score = randInt(tier.min, tier.max);
+    const nStats = power_score <= 4 ? 1 : (power_score <= 11 ? 2 : 3);
+    const chosen = shuffle(statPool).slice(0, Math.min(nStats, statPool.length));
+    let remaining = Math.max(power_score, chosen.length);
+    const bonuses = {};
+    chosen.forEach((s, i) => {
+      if (i === chosen.length - 1) {
+        bonuses[s] = Math.max(1, remaining);
+      } else {
+        let give = Math.max(1, Math.floor(remaining / (chosen.length - i)) - randInt(0, 1));
+        give = Math.min(give, remaining - (chosen.length - i - 1));
+        bonuses[s] = Math.max(1, give);
+        remaining -= bonuses[s];
+      }
+    });
+    return { name, tier: tier.name, color: tier.color, power_score, stat_bonus: bonuses, desc: descFn(name, tier.name) };
+  });
+  entries.sort((a, b) => TIERS.findIndex(t => t.name === a.tier) - TIERS.findIndex(t => t.name === b.tier));
+  return entries;
+}
+
+const RACE_ROOTS = ["Human","Elf","Dwarf","Orc","Goblin","Troll","Fae","Demon","Angel","Vampire","Werewolf","Dragonkin","Golem","Ghost","Skeleton","Centaur","Merfolk","Gnome","Halfling","Giant","Djinn","Lich","Automaton","Beastkin","Wraith","Naga","Harpy","Chimera","Sprite","Colossus"];
+const RACE_MODS = ["Fire","Shadow","Storm","Frost","Blood","Void","Crystal","Iron","Ember","Moon","Sun","Thorn","Ash","Venom","Star","Abyssal","Radiant","Feral","Spectral","Molten"];
+const POWER_ELEMENTS = ["Flame","Shadow","Frost","Storm","Void","Blood","Light","Earth","Poison","Spirit","Iron","Crystal","Wind","Star","Ash","Thunder","Chaos","Order","Moon","Sun"];
+const POWER_ACTIONS = ["Burst","Step","Wave","Strike","Surge","Call","Storm","Grasp","Veil","Pulse","Rend","Bind","Howl","Flare","Cascade","Eruption","Lash","Wrath","Bloom","Convergence"];
+const PASSIVE_NOUNS = ["Will","Sense","Frenzy","Guard","Instinct","Resolve","Fury","Calm","Reflex","Aura","Bond","Focus","Vigor","Grit","Momentum","Insight","Armor","Shroud","Pact","Echo"];
+const ABILITY_GERUNDS = ["Weaving","Calling","Bending","Shaping","Channeling","Summoning","Warding","Rending","Piercing","Binding","Cursing","Blessing","Hunting","Stalking","Forging","Consuming","Reviving","Corrupting","Purifying","Ascending"];
+
+const RACES = makeEntries(
+  buildPool(RACE_ROOTS, RACE_MODS, (m, r) => `${m} ${r}`),
+  (name, tier) => `The ${name}, a ${tier.toLowerCase()}-tier bloodline whispered about across the realm.`,
+  STAT_KEYS
+);
+const POWERS = makeEntries(
+  buildPool(POWER_ELEMENTS, POWER_ACTIONS, (m, r) => `${m} ${r}`),
+  (name, tier) => `${name}: unleashes a ${tier.toLowerCase()}-tier surge of raw power in battle.`,
+  ["STR", "INT", "AGI"]
+);
+const PASSIVES = makeEntries(
+  buildPool(POWER_ELEMENTS, PASSIVE_NOUNS, (m, r) => `${m} ${r}`),
+  (name, tier) => `${name}: a ${tier.toLowerCase()}-tier trait that quietly shapes every fight.`,
+  ["DEF", "VIT", "LCK"]
+);
+const ABILITIES = makeEntries(
+  buildPool(POWER_ELEMENTS, ABILITY_GERUNDS, (m, r) => `${m} ${r}`),
+  (name, tier) => `${name}: a ${tier.toLowerCase()}-tier technique mastered through hard-won skill.`,
+  STAT_KEYS
+);
+
+const CATEGORY_ORDER = ["race", "power", "passive", "ability"];
+const CATEGORIES = {
+  race:    { label: "Race",    pool: RACES,    next: "power" },
+  power:   { label: "Power",   pool: POWERS,   next: "passive" },
+  passive: { label: "Passive", pool: PASSIVES, next: "ability" },
+  ability: { label: "Ability", pool: ABILITIES, next: "stats" },
+};
+
+function spinPool(pool) {
+  const weights = pool.map(e => TIERS.find(t => t.name === e.tier).weight);
+  const total = weights.reduce((a, b) => a + b, 0);
+  let r = Math.random() * total;
+  for (let i = 0; i < pool.length; i++) { if (r < weights[i]) return pool[i]; r -= weights[i]; }
+  return pool[pool.length - 1];
+}
+
+/* =========================================================================
+   GAME LOGIC: stats system, character build, battle engine
+   ========================================================================= */
+function rollBaseStats() {
+  const s = {};
+  STAT_KEYS.forEach(k => { s[k] = randInt(3, 18); });
+  return s;
+}
+function applyBonuses(base, picks) {
+  const final = Object.assign({}, base);
+  picks.forEach(p => {
+    Object.entries(p.stat_bonus || {}).forEach(([stat, val]) => {
+      final[stat] = (final[stat] || 0) + val;
+    });
+  });
+  return final;
+}
+function totalPowerScore(picks) { return picks.reduce((s, p) => s + (p.power_score || 0), 0); }
+function powerTierLabel(score) {
+  const thresholds = [[0,12,"Common"],[13,24,"Uncommon"],[25,36,"Rare"],[37,52,"Epic"],[53,68,"Legendary"],[69,9999,"Mythic"]];
+  for (const [lo, hi, label] of thresholds) if (score >= lo && score <= hi) return label;
+  return "Mythic";
+}
+function makeId() {
+  if (window.crypto && crypto.randomUUID) return crypto.randomUUID().slice(0, 8);
+  return "id" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+function buildCharacter(name, race, power, passive, ability, baseStats) {
+  const picks = [race, power, passive, ability];
+  const finalStats = applyBonuses(baseStats, picks);
+  const sum = Object.values(finalStats).reduce((a, b) => a + b, 0);
+  const pscore = totalPowerScore(picks) + Math.floor(sum / 4);
+  const hp = 50 + finalStats.VIT * 4 + pscore;
+  return {
+    id: makeId(), name: name || "Nameless Doomed",
+    race, power, passive, ability,
+    base_stats: baseStats, final_stats: finalStats,
+    power_score: pscore, power_tier: powerTierLabel(pscore),
+    max_hp: hp, created: Date.now(),
+  };
+}
+
+function attackRoll(attacker, defender) {
+  const s = attacker.final_stats, d = defender.final_stats;
+  const base = s.STR * 1.1 + s.INT * 0.6 + attacker.power_score * 0.8;
+  const mitigation = d.DEF * 0.9 + d.VIT * 0.2;
+  const variance = 0.8 + Math.random() * 0.45;
+  let dmg = Math.max(2, (base - mitigation * 0.5) * variance);
+  const critChance = Math.min(0.45, 0.05 + s.LCK * 0.01 + s.AGI * 0.005);
+  const crit = Math.random() < critChance;
+  if (crit) dmg *= 1.75;
+  const dodgeChance = Math.min(0.35, d.AGI * 0.008 + d.LCK * 0.004);
+  const dodged = Math.random() < dodgeChance;
+  if (dodged) dmg = 0;
+  return { dmg: Math.round(dmg), crit, dodged };
+}
+function simulateBattle(charA, charB) {
+  let hpA = charA.max_hp, hpB = charB.max_hp;
+  const log = [`\u2694\ufe0f ${charA.name} (${charA.power_tier}, PWR ${charA.power_score}) faces ${charB.name} (${charB.power_tier}, PWR ${charB.power_score})!`];
+  const gap = charA.power_score - charB.power_score;
+  if (Math.abs(gap) >= 15) {
+    const favored = gap > 0 ? charA.name : charB.name;
+    log.push(`\u26a1 A massive power gap crackles in the air... ${favored} looks dominant.`);
+  }
+  const first = charA.final_stats.AGI >= charB.final_stats.AGI ? charA : charB;
+  const second = first === charA ? charB : charA;
+  let turn = 1;
+  while (hpA > 0 && hpB > 0 && turn <= 40) {
+    for (const [attacker, defender] of [[first, second], [second, first]]) {
+      if (hpA <= 0 || hpB <= 0) break;
+      const { dmg, crit, dodged } = attackRoll(attacker, defender);
+      if (attacker === charA) hpB = Math.max(0, hpB - dmg); else hpA = Math.max(0, hpA - dmg);
+      if (dodged) {
+        log.push(`Turn ${turn}: ${defender.name} dodges ${attacker.name}'s ${attacker.power.name}!`);
+      } else {
+        const tag = crit ? " \ud83d\udca5 CRITICAL!" : "";
+        const hpNow = defender === charB ? hpB : hpA;
+        log.push(`Turn ${turn}: ${attacker.name} uses ${attacker.power.name} for ${dmg} dmg.${tag} (${defender.name} HP: ${hpNow})`);
+      }
+    }
+    turn++;
+  }
+  let winner;
+  if (hpA <= 0 && hpB <= 0) winner = null;
+  else if (hpA <= 0) winner = charB;
+  else if (hpB <= 0) winner = charA;
+  else winner = hpA >= hpB ? charA : charB;
+  log.push(winner ? `\ud83c\udfc6 ${winner.name} is victorious!` : "\ud83c\udfc6 It's a draw!");
+  return { log, winnerId: winner ? winner.id : null, finalHpA: hpA, finalHpB: hpB };
+}
+
+/* =========================================================================
+   SHARED STORAGE (works across everyone who opens this page)
+   ========================================================================= */
+async function loadRoster() {
+  try {
+    const res = await window.storage.get("roster", true);
+    return res ? JSON.parse(res.value) : [];
+  } catch (e) {
+    return [];
+  }
+}
+async function saveCharacterToRoster(character) {
+  let list = await loadRoster();
+  list = list.filter(c => c.id !== character.id);
+  list.push(character);
+  if (list.length > 300) list = list.slice(list.length - 300);
+  try {
+    await window.storage.set("roster", JSON.stringify(list), true);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+/* =========================================================================
+   UI / VIEW LOGIC
+   ========================================================================= */
+const state = { name: "", race: null, power: null, passive: null, ability: null, base_stats: null, character: null, battleOpponent: null };
+
+function showView(id) {
+  document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+  window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
+}
+
+function renderStepTrack(el, step, total) {
+  el.innerHTML = "";
+  for (let i = 1; i <= total; i++) {
+    const dot = document.createElement("span");
+    dot.className = "step-dot" + (i < step ? " done" : i === step ? " active" : "");
+    el.appendChild(dot);
+  }
+}
+
+// ---- START ----
+document.getElementById("startForm").addEventListener("submit", function (e) {
+  e.preventDefault();
+  const nameInput = document.getElementById("hero_name");
+  state.name = (nameInput.value || "").trim().slice(0, 24) || "Nameless Doomed";
+  goToWheel("race");
+});
+
+// ---- WHEEL ----
+let wheelRotation = 0;
+function goToWheel(cat) {
+  const info = CATEGORIES[cat];
+  const idx = CATEGORY_ORDER.indexOf(cat);
+  renderStepTrack(document.getElementById("wheelSteps"), idx + 1, CATEGORY_ORDER.length + 1);
+  document.getElementById("wheelHero").textContent = `${state.name}, step ${idx + 1} of ${CATEGORY_ORDER.length + 1}`;
+  document.getElementById("wheelTitle").textContent = `Wheel of ${info.label}`;
+  document.getElementById("wheelSub").textContent = `${info.pool.length} possible outcomes. Common is likely. Mythic is a legend.`;
+  document.getElementById("wheelHub").textContent = info.label;
+
+  let acc = 0;
+  const gradientParts = TIERS.map(t => {
+    const part = `${t.color} ${acc}% ${acc + t.weight}%`;
+    acc += t.weight;
+    return part;
+  });
+  document.getElementById("wheel").style.background = `conic-gradient(${gradientParts.join(",")})`;
+  wheelRotation = 0;
+  document.getElementById("wheel").style.transition = "none";
+  document.getElementById("wheel").style.transform = "rotate(0deg)";
+  void document.getElementById("wheel").offsetWidth; // reflow to reset transition
+  document.getElementById("wheel").style.transition = "";
+
+  const legend = document.getElementById("tierLegend");
+  legend.innerHTML = TIERS.map(t => `<span class="tier-chip" style="--chip-color:${t.color}">${t.name} \u00b7 ${t.weight}%</span>`).join("");
+
+  document.getElementById("resultCard").classList.add("hidden");
+  document.getElementById("continueBtn").classList.add("hidden");
+  const spinBtn = document.getElementById("spinBtn");
+  spinBtn.textContent = `Spin the Wheel of ${info.label}`;
+  spinBtn.disabled = false;
+  spinBtn.dataset.cat = cat;
+
+  showView("view-wheel");
+}
+
+function tierRange(tierName) {
+  let acc = 0;
+  for (const t of TIERS) { if (t.name === tierName) return [acc, acc + t.weight]; acc += t.weight; }
+  return [0, 100];
+}
+
+let spinning = false;
+document.getElementById("spinBtn").addEventListener("click", function () {
+  if (spinning) return;
+  spinning = true;
+  const cat = this.dataset.cat;
+  const info = CATEGORIES[cat];
+  this.disabled = true;
+  document.getElementById("resultCard").classList.add("hidden");
+  document.getElementById("continueBtn").classList.add("hidden");
+
+  const item = spinPool(info.pool);
+  state[cat] = item;
+
+  const [lo, hi] = tierRange(item.tier);
+  const midPct = lo + Math.random() * (hi - lo);
+  const targetDeg = 360 - (midPct / 100) * 360;
+  const extraSpins = 5 + Math.floor(Math.random() * 3);
+  wheelRotation += extraSpins * 360 + (((targetDeg - (wheelRotation % 360)) % 360) + 360) % 360;
+  document.getElementById("wheel").style.transform = `rotate(${wheelRotation}deg)`;
+
+  const self = this;
+  setTimeout(() => {
+    const badge = document.getElementById("resultTierBadge");
+    badge.textContent = item.tier;
+    badge.style.color = item.color;
+    badge.style.borderColor = item.color;
+    document.getElementById("resultName").textContent = item.name;
+    document.getElementById("resultDesc").textContent = item.desc;
+    document.getElementById("resultScore").textContent = item.power_score;
+    document.getElementById("resultBonuses").innerHTML = Object.entries(item.stat_bonus)
+      .map(([s, v]) => `<span class="bonus-chip">${s} +${v}</span>`).join("");
+    document.getElementById("resultCard").classList.remove("hidden");
+
+    const cont = document.getElementById("continueBtn");
+    cont.classList.remove("hidden");
+    cont.textContent = info.next === "stats" ? "Continue to Stats \u2192" : `Continue \u2192`;
+    cont.onclick = () => { info.next === "stats" ? goToStats() : goToWheel(info.next); };
+
+    self.textContent = "Spin Again";
+    self.disabled = false;
+    spinning = false;
+  }, 3300);
+});
+
+// ---- STATS ----
+function goToStats() {
+  renderStepTrack(document.getElementById("statsSteps"), 5, 5);
+  document.getElementById("statsHero").textContent = `${state.name}, final step`;
+  document.getElementById("statGrid").classList.add("hidden");
+  document.getElementById("sheetBtn").classList.add("hidden");
+  document.getElementById("rollBtn").textContent = "Roll Stats";
+  document.getElementById("rollBtn").disabled = false;
+  showView("view-stats");
+}
+document.getElementById("rollBtn").addEventListener("click", function () {
+  this.disabled = true;
+  const stats = rollBaseStats();
+  state.base_stats = stats;
+  const grid = document.getElementById("statGrid");
+  grid.classList.remove("hidden");
+  const self = this;
+  Object.keys(stats).forEach((key, i) => {
+    const box = grid.querySelector(`[data-stat="${key}"] .stat-val`);
+    let ticks = 0;
+    const maxTicks = 10;
+    const interval = setInterval(() => {
+      ticks++;
+      if (ticks >= maxTicks) { box.textContent = stats[key]; clearInterval(interval); }
+      else box.textContent = randInt(3, 18);
+    }, 60 + i * 15);
+  });
+  setTimeout(() => {
+    self.textContent = "Reroll Stats";
+    self.disabled = false;
+    document.getElementById("sheetBtn").classList.remove("hidden");
+  }, 700);
+});
+document.getElementById("sheetBtn").addEventListener("click", goToSheet);
+
+// ---- SHEET ----
+function traitBlock(kind, item) {
+  return `<div class="trait" style="--trait-color:${item.color}">
+    <span class="trait-kind">${kind}</span>
+    <span class="trait-name">${item.name}</span>
+    <span class="trait-tier">${item.tier}</span>
+    <p class="trait-desc">${item.desc}</p>
+  </div>`;
+}
+function goToSheet() {
+  const c = buildCharacter(state.name, state.race, state.power, state.passive, state.ability, state.base_stats);
+  state.character = c;
+  document.getElementById("sheetName").textContent = c.name;
+  document.getElementById("heroCard").style.setProperty("--tier-color", c.power.color);
+  document.getElementById("sheetTier").textContent = `${c.power_tier} \u00b7 Power ${c.power_score}`;
+  document.getElementById("sheetHp").textContent = `${c.max_hp} HP`;
+  document.getElementById("sheetTraits").innerHTML =
+    traitBlock("Race", c.race) + traitBlock("Power", c.power) + traitBlock("Passive", c.passive) + traitBlock("Ability", c.ability);
+  document.getElementById("sheetStats").innerHTML = Object.entries(c.final_stats).map(([k, v]) => {
+    const base = c.base_stats[k];
+    const bonus = v > base ? `<span class="stat-bonus">+${v - base}</span>` : "";
+    return `<div class="stat-box"><span class="stat-label">${k}</span><span class="stat-val">${v}</span>${bonus}</div>`;
+  }).join("");
+  document.getElementById("saveBtn").disabled = false;
+  document.getElementById("saveBtn").textContent = "Save & Enter the Arena \u2192";
+  document.getElementById("saveNote").classList.add("hidden");
+  showView("view-sheet");
+}
+document.getElementById("saveBtn").addEventListener("click", async function () {
+  this.disabled = true;
+  this.textContent = "Saving...";
+  const note = document.getElementById("saveNote");
+  note.classList.remove("hidden");
+  note.textContent = "Saving your hero to the shared arena...";
+  const ok = await saveCharacterToRoster(state.character);
+  note.textContent = ok
+    ? "Saved! Anyone who opens this page can now fight your hero."
+    : "Couldn't reach shared storage, but you can still browse the arena.";
+  goToRoster();
+});
+
+// ---- ROSTER ----
+async function goToRoster() {
+  showView("view-roster");
+  const c = state.character;
+  document.getElementById("youStrip").innerHTML = c
+    ? `Fighting as <strong>${c.name}</strong> \u00b7 ${c.power_tier} \u00b7 Power ${c.power_score} \u00b7 ${c.max_hp} HP
+       &nbsp;\u00b7&nbsp; <button class="link-btn" id="newHeroBtn">Roll a new hero</button>`
+    : `No active hero. <button class="link-btn" id="newHeroBtn">Spin one up first.</button>`;
+  document.getElementById("newHeroBtn").addEventListener("click", resetToStart);
+
+  document.getElementById("rosterLoading").classList.remove("hidden");
+  document.getElementById("opponentGrid").classList.add("hidden");
+  document.getElementById("rosterEmpty").classList.add("hidden");
+
+  const roster = await loadRoster();
+  const opponents = roster.filter(r => !c || r.id !== c.id);
+  document.getElementById("rosterLoading").classList.add("hidden");
+
+  if (opponents.length === 0) {
+    document.getElementById("rosterEmpty").classList.remove("hidden");
+    return;
+  }
+  const grid = document.getElementById("opponentGrid");
+  grid.classList.remove("hidden");
+  grid.innerHTML = opponents.slice().reverse().map(o => `
+    <div class="opponent-card" style="--tier-color:${o.power.color}">
+      <h3>${o.name}</h3>
+      <p class="opp-line">${o.race.name} \u00b7 ${o.power.name}</p>
+      <p class="opp-line dim">${o.power_tier} \u00b7 Power ${o.power_score} \u00b7 ${o.max_hp} HP</p>
+      ${c ? `<button class="btn btn-primary fight-select" data-id="${o.id}">Fight</button>` : ""}
+    </div>
+  `).join("");
+  grid.querySelectorAll(".fight-select").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const opp = opponents.find(o => o.id === btn.dataset.id);
+      goToBattle(opp);
+    });
+  });
+}
+function resetToStart() {
+  state.name = ""; state.race = null; state.power = null; state.passive = null;
+  state.ability = null; state.base_stats = null; state.character = null; state.battleOpponent = null;
+  document.getElementById("hero_name").value = "";
+  showView("view-start");
+}
+
+// ---- BATTLE ----
+function goToBattle(opponent) {
+  state.battleOpponent = opponent;
+  const a = state.character, b = opponent;
+  document.getElementById("battleTitle").textContent = `${a.name} vs ${b.name}`;
+  document.getElementById("duelCardA").style.setProperty("--tier-color", a.power.color);
+  document.getElementById("duelCardB").style.setProperty("--tier-color", b.power.color);
+  document.getElementById("duelNameA").textContent = a.name;
+  document.getElementById("duelNameB").textContent = b.name;
+  document.getElementById("duelRaceA").textContent = a.race.name;
+  document.getElementById("duelRaceB").textContent = b.race.name;
+  document.getElementById("duelTierA").textContent = `${a.power_tier} \u00b7 Power ${a.power_score}`;
+  document.getElementById("duelTierB").textContent = `${b.power_tier} \u00b7 Power ${b.power_score}`;
+  document.getElementById("hpA").style.width = "100%";
+  document.getElementById("hpB").style.width = "100%";
+  document.getElementById("hpNumA").textContent = `${a.max_hp} / ${a.max_hp} HP`;
+  document.getElementById("hpNumB").textContent = `${b.max_hp} / ${b.max_hp} HP`;
+  document.getElementById("battleLog").innerHTML = "";
+  document.getElementById("battleActions").classList.add("hidden");
+  document.getElementById("fightBtn").disabled = false;
+  document.getElementById("fightBtn").textContent = "Begin Battle";
+  showView("view-battle");
+}
+document.getElementById("fightBtn").addEventListener("click", function () {
+  this.disabled = true;
+  this.textContent = "Fighting...";
+  const a = state.character, b = state.battleOpponent;
+  const result = simulateBattle(a, b);
+  const log = document.getElementById("battleLog");
+  log.innerHTML = "";
+  let i = 0;
+  const step = () => {
+    if (i >= result.log.length) {
+      document.getElementById("battleActions").classList.remove("hidden");
+      return;
+    }
+    const line = result.log[i];
+    const p = document.createElement("p");
+    p.textContent = line;
+    if (line.includes("victorious") || line.includes("draw")) p.classList.add("winner");
+    log.appendChild(p);
+    log.scrollTop = log.scrollHeight;
+    const m = line.match(/\((.+?) HP:\s*(\d+)\)/);
+    if (m) {
+      const name = m[1], val = parseInt(m[2], 10);
+      if (name === a.name) {
+        document.getElementById("hpA").style.width = Math.max(0, (val / a.max_hp) * 100) + "%";
+        document.getElementById("hpNumA").textContent = `${val} / ${a.max_hp} HP`;
+      } else if (name === b.name) {
+        document.getElementById("hpB").style.width = Math.max(0, (val / b.max_hp) * 100) + "%";
+        document.getElementById("hpNumB").textContent = `${val} / ${b.max_hp} HP`;
+      }
+    }
+    i++;
+    setTimeout(step, 260);
+  };
+  step();
+});
+document.getElementById("backToArenaBtn").addEventListener("click", goToRoster);
+
+})();
+</script>
+</body>
+</html>
